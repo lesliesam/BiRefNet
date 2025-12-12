@@ -112,7 +112,7 @@ def inference_pipeline(model, image_path, device):
 def main():
     # Configuration
     weights_path = './weights/BiRefNet-DIS-epoch_590.pth'
-    image_path = "image001.jpg"
+    image_path = "oppo_test/image001.jpg"
     num_iterations = 500
     warmup_iterations = 10
     
