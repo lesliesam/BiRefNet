@@ -120,6 +120,7 @@ def main():
     print("Checking for GPU...")
     if torch.cuda.is_available():
         device = 'cuda'
+        print("CUDA Version:", torch.version.cuda)
         print(f"✅ CUDA is available. Using GPU: {torch.cuda.get_device_name(0)}")
     else:
         device = 'cpu'
