@@ -113,7 +113,7 @@ def main():
     # Configuration
     weights_path = './weights/BiRefNet-DIS-epoch_590.pth'
     image_path = "oppo_test/image001.jpg"
-    num_iterations = 500
+    num_iterations = 20
     warmup_iterations = 10
     
     # 1. Check for GPU
