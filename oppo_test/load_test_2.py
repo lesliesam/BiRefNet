@@ -106,10 +106,11 @@ def inference_pipeline(model, image_path, device):
         
         result_resized = F.interpolate(result, size=(orig_h, orig_w), mode='bilinear', align_corners=False)
         
-        pred = result_resized[0].squeeze().cpu()
-        pred_pil = transforms.ToPILImage()(pred)
-        # No need to resize here anymore
-        # pred_pil = pred_pil.resize(img.size)
+        # Optimization: Convert to uint8 on GPU to reduce CPU overhead and PCIe bandwidth
+        # 1. Multiply by 255 and cast to uint8 on GPU
+        # 2. Transfer small uint8 tensor to CPU (4x smaller than float32)
+        pred_tensor = (result_resized[0].squeeze() * 255).to(torch.uint8)
+        pred_pil = transforms.ToPILImage()(pred_tensor.cpu())
         
         output_filename = "output_loadtest_gpu_resize.png"
         pred_pil.save(output_filename)
