@@ -78,24 +78,38 @@ def inference_pipeline(model, image_path, device):
     3. Model Inference
     4. Post-process and Save (Simulate writing response)
     """
+    metrics = {}
     try:
         # 1. Load from disk
+        t0 = time.time()
         if not os.path.exists(image_path):
             print(f"❌ Error: Image file not found at {os.path.abspath(image_path)}")
-            return None
+            return None, metrics
         img = Image.open(image_path).convert("RGB")
+        t1 = time.time()
+        metrics['disk_read'] = (t1 - t0) * 1000
         
         # 2. Preprocess
         inp = preprocess_image(img, device)
         if inp is None:
-            return None
+            return None, metrics
+        
+        if device == 'cuda':
+            torch.cuda.synchronize()
+        t2 = time.time()
+        metrics['preprocess'] = (t2 - t1) * 1000
             
         # 3. Inference
         result = run_inference(model, inp, device)
         
+        if device == 'cuda':
+            torch.cuda.synchronize()
+        t3 = time.time()
+        metrics['inference'] = (t3 - t2) * 1000
+        
         # 4. Post-process & Save
         if result is None:
-            return None
+            return None, metrics
             
         pred = result[0].squeeze()
         pred_pil = transforms.ToPILImage()(pred)
@@ -104,10 +118,13 @@ def inference_pipeline(model, image_path, device):
         output_filename = "output_loadtest.png"
         pred_pil.save(output_filename)
         
-        return result
+        t4 = time.time()
+        metrics['disk_write'] = (t4 - t3) * 1000
+        
+        return result, metrics
     except Exception as e:
         print(f"❌ Pipeline failed: {e}")
-        return None
+        return None, metrics
 
 def main():
     # Configuration
@@ -149,6 +166,13 @@ def main():
     # 5. Benchmark
     print(f"Running {num_iterations} benchmark iterations (full pipeline)...")
     latencies = []
+    
+    # Granular metrics lists
+    disk_read_times = []
+    preprocess_times = []
+    inference_times = []
+    disk_write_times = []
+    
     success_count = 0
     fail_count = 0
     
@@ -157,7 +181,7 @@ def main():
         iter_start = time.time()
         
         # Simulate request handling: Load Disk -> Preprocess -> Inference
-        result = inference_pipeline(birefnet, image_path, device)
+        result, metrics = inference_pipeline(birefnet, image_path, device)
         
         if device == 'cuda':
             torch.cuda.synchronize()
@@ -166,6 +190,12 @@ def main():
         if result is not None:
             success_count += 1
             latencies.append((iter_end - iter_start) * 1000) # ms
+            
+            # Store granular metrics
+            if 'disk_read' in metrics: disk_read_times.append(metrics['disk_read'])
+            if 'preprocess' in metrics: preprocess_times.append(metrics['preprocess'])
+            if 'inference' in metrics: inference_times.append(metrics['inference'])
+            if 'disk_write' in metrics: disk_write_times.append(metrics['disk_write'])
         else:
             fail_count += 1
         
@@ -178,9 +208,23 @@ def main():
     if len(latencies) > 0:
         avg_latency = np.mean(latencies)
         std_latency = np.std(latencies)
+        
+        avg_read = np.mean(disk_read_times)
+        std_read = np.std(disk_read_times)
+        
+        avg_prep = np.mean(preprocess_times)
+        std_prep = np.std(preprocess_times)
+        
+        avg_inf = np.mean(inference_times)
+        std_inf = np.std(inference_times)
+        
+        avg_write = np.mean(disk_write_times)
+        std_write = np.std(disk_write_times)
     else:
         avg_latency = 0
         std_latency = 0
+        avg_read, avg_prep, avg_inf, avg_write = 0, 0, 0, 0
+        std_read, std_prep, std_inf, std_write = 0, 0, 0, 0
         
     fps = success_count / total_time
     
@@ -194,6 +238,12 @@ def main():
     print(f"Failed: {fail_count}")
     print(f"Total Time: {total_time:.4f}s")
     print(f"Average Latency (Success): {avg_latency:.2f} ms ± {std_latency:.2f} ms")
+    print("-" * 20)
+    print(f"  1. Disk Read:    {avg_read:.2f} ms ± {std_read:.2f} ms")
+    print(f"  2. Preprocess:   {avg_prep:.2f} ms ± {std_prep:.2f} ms")
+    print(f"  3. Inference:    {avg_inf:.2f} ms ± {std_inf:.2f} ms")
+    print(f"  4. Disk Write:   {avg_write:.2f} ms ± {std_write:.2f} ms")
+    print("-" * 20)
     print(f"Throughput (Success): {fps:.2f} FPS")
     print("="*40)
 
