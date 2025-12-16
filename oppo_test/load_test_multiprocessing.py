@@ -113,7 +113,7 @@ def main():
         return
         
     image_path = "oppo_test/image001.jpg"
-    num_iterations = 50 # Increase iterations to see throughput benefits
+    num_iterations = 100 # Increase iterations to see throughput benefits
     num_preprocess_workers = 4
     num_postprocess_workers = 6 # IO bound, can be higher
     
@@ -214,6 +214,8 @@ def main():
     print("="*40)
     print(f"Total Time: {total_time:.4f}s")
     print(f"Throughput: {fps:.2f} FPS")
+    if fps > 0:
+        print(f"Avg Time per Image: {1000/fps:.2f} ms")
     print("-" * 20)
     print("Average Component Latencies (Per Sample):")
     print(f"  Preprocess (CPU):  {avg_prep:.2f} ms")
