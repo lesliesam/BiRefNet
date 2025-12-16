@@ -48,7 +48,17 @@ def preprocess_image(image, device):
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
     try:
-        input_images = transform_image(image).unsqueeze(0).to(device)
+        # Preprocess on CPU
+        tensor = transform_image(image).unsqueeze(0)
+        
+        # Move to device with pin_memory if available
+        if device == 'cuda':
+            # pinning memory allows faster host-to-device transfer
+            tensor = tensor.pin_memory()
+            input_images = tensor.to(device, non_blocking=True)
+        else:
+            input_images = tensor.to(device)
+            
         return input_images
     except Exception as e:
         print(f"❌ Preprocessing failed: {e}")
