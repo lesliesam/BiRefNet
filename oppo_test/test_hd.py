@@ -105,9 +105,9 @@ if __name__ == "__main__":
         # (2048, 1536, 16384, 12288), # 2K -> 16K
     ]
     
-    num_iterations = 100
+    num_iterations = 10
     
-    img_path = './tests/input/X8_IMG20241225160045_02.jpg'
+    img_path = 'oppo_test/X8_IMG20241225160045_02.jpg'
     if not os.path.exists(img_path):
         print(f"Error: Image file not found at {img_path}")
         sys.exit(1)
